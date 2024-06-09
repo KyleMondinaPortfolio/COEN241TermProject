@@ -5,10 +5,14 @@ import threading
 import struct
 from statistics import mean, stdev
 from NetworkUtil import grab_chord_node
+import os
 
 PORT = 5000
 M = 8
 ALPHA = 1
+
+UPLOADED_FILES_METADATA = "/tmp/czhang7/uploaded_files_metadata.txt"
+BACKUP_FILES_METADATA = "/tmp/czhang7/backup_files_metadata.txt"
 
 def hash_key(key):
     """Generate a hash for a given key."""
@@ -29,11 +33,44 @@ class ChordNode:
         self.predecessor = None
         self.finger_table = [ChordNodeRef(self.id, self.ip)] * M  # Assume m=160 for SHA-1
         self.blacklist = set() # To keep track of blacklisted nodes
+        self.uploaded_files = []
+        self.backup_files = []
+        self.load_metadata()
+
         if bootstrap_node:
             self.join(bootstrap_node)
         else:
             # Start a new P2P network if no bootstrap node is supplied
             self.initialize_first_node()
+    
+    def load_metadata(self):
+        # Load uploaded files metadata
+        if os.path.exists(UPLOADED_FILES_METADATA):
+            with open(UPLOADED_FILES_METADATA, 'r') as file:
+                for line in file:
+                    file_name = line.strip().split(' ')[0]
+                    if file_name not in self.uploaded_files:
+                        self.uploaded_files.append(file_name)
+
+        # Load backup files metadata
+        if os.path.exists(BACKUP_FILES_METADATA):
+            with open(BACKUP_FILES_METADATA, 'r') as file:
+                for line in file:
+                    file_name = line.strip().split(' ')[0]
+                    if file_name not in self.backup_files:
+                        self.backup_files.append(file_name)
+
+    def add_uploaded_file(self, file_name):
+        if file_name not in self.uploaded_files:
+            self.uploaded_files.append(file_name)
+            with open(UPLOADED_FILES_METADATA, 'a') as file:
+                file.write(f"{file_name} uploaded by {self.ip}\n")
+
+    def add_backup_file(self, file_name):
+        if file_name not in self.backup_files:
+            self.backup_files.append(file_name)
+            with open(BACKUP_FILES_METADATA, 'a') as file:
+                file.write(f"{file_name} backed up at {self.ip}\n")
 
     def initialize_first_node(self):
         # Initialize this node as the first node in the network.
