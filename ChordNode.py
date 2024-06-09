@@ -74,32 +74,31 @@ class ChordNode:
 
     def notify(self, target_ip, n0):
         print(f"Node {self.id} sending notification operation to {target_ip}")
-        # Connect to target_ip
         client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         client_socket.connect((target_ip, PORT))
-        
-        # Send the notification message and attach the supplied node
-        message_type = "NOTIFY"
-        message_type_encoded = message_type.encode('utf-8')
-        message_type_length = len(message_type_encoded)
-        
-        # Ensure the message type length is fixed (e.g., 8 bytes)
-        header = struct.pack('!I', message_type_length)  # 4-byte unsigned int
 
-        # Send header and message type
-        client_socket.sendall(header + message_type_encoded)
+        try:
+            # Prepare the message to send
+            message_type = "NOTIFY"
+            message_type_encoded = message_type.encode('utf-8')
+            message_type_length = len(message_type_encoded)
+            obj_data = pickle.dumps(n0)
+            obj_length = len(obj_data)
 
-        # Send the serialized object in chunks
-        obj_data = pickle.dumps(n0)
-        total_sent = 0
-        while total_sent < len(obj_data):
-            sent = client_socket.send(obj_data[total_sent:])
-            if sent == 0:
-                raise RuntimeError("Socket connection broken")
-            total_sent += sent
+            # Construct the data to send
+            data_to_send = struct.pack('!I', message_type_length) + message_type_encoded
+            data_to_send += struct.pack('!I', obj_length) + obj_data
 
-        client_socket.close()
+            # Send all data at once
+            client_socket.sendall(data_to_send)
 
+            # Optionally, print the pickled data for debugging
+            print("Sent pickled data:", obj_data)
+
+        except Exception as e:
+            print(f"Error in notify: {e}")
+        finally:
+            client_socket.close()
 
     def stabilize(self):
         # Periodic stabilization

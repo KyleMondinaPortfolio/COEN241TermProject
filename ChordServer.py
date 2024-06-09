@@ -19,27 +19,40 @@ class ChordServer:
             self.node = ChordNode(ip, bootstrap_node)
         else:
             self.node = ChordNode(ip) 
-
     def handle_client(self, client_socket, client_address):
         print(f"Connection from {client_address} has been established.")
 
         try:
-            # Receive the header to determine the length of the message type
-            header = client_socket.recv(4)
-            if len(header) < 4:
-                return  # Disconnected before receiving full header
+            # Receive the message type length
+            message_type_length_data = client_socket.recv(4)
+            if len(message_type_length_data) < 4:
+                raise Exception("Incomplete message type length received")
 
-            message_type_length = struct.unpack('!I', header)[0]
+            message_type_length = struct.unpack('!I', message_type_length_data)[0]
 
             # Receive the message type
-            message_type = client_socket.recv(message_type_length).decode('utf-8')
-            if not message_type:
-                return
+            message_type_encoded = client_socket.recv(message_type_length)
+            if len(message_type_encoded) < message_type_length:
+                raise Exception("Incomplete message type received")
 
-            print(message_type)
+            message_type = message_type_encoded.decode('utf-8')
 
             if message_type == 'NOTIFY':
-                obj_data = client_socket.recv(4096)
+                # Receive the object length
+                obj_length_data = client_socket.recv(4)
+                if len(obj_length_data) < 4:
+                    raise Exception("Incomplete object length received")
+
+                obj_length = struct.unpack('!I', obj_length_data)[0]
+
+                # Receive the actual object data
+                obj_data = bytearray()
+                while len(obj_data) < obj_length:
+                    packet = client_socket.recv(obj_length - len(obj_data))
+                    if not packet:
+                        raise Exception("Incomplete object data received")
+                    obj_data.extend(packet)
+
                 n0 = pickle.loads(obj_data)
                 print(f"Received NOTIFICATION from {client_address}: {n0.ip}")
 
@@ -66,6 +79,7 @@ class ChordServer:
                 print(f"The notify function of {self.node.id} was called with argument {n0.id}, its predecessor is {self.node.predecessor.id}")
 
             elif message_type == 'GRAB':
+                # Respond to GRAB message
                 response_obj = self.node
                 response_data = pickle.dumps(response_obj)
                 response_length = struct.pack('!I', len(response_data))
@@ -76,6 +90,8 @@ class ChordServer:
         finally:
             client_socket.close()
             print(f"Connection with {client_address} closed.")
+
+
 
     def start_server(self):
         self.server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
