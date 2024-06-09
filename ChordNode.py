@@ -51,7 +51,8 @@ class ChordNode:
 
         # Initialize finger table
         for i in range(M):
-            self.finger_table[i] = self.find_successor((self.id + 2**i) % 2**M)
+            chordNode = self.find_successor((self.id + 2**i) % 2**M)
+            self.finger_table[i] = ChordNodeRef(chordNode.id, chordNode.ip)
 
     def find_successor(self, id):
         # Return a live version of the successor
@@ -68,8 +69,13 @@ class ChordNode:
 
     def closest_preceding_node(self, id):
         for i in range(M-1, -1, -1):
-            if self.id < self.finger_table[i].id < id:
-                chord_node = grab_chord_node(self.finger_table[i].ip)
+            # Check if the finger_table[i].id is between self.id and id
+            if self.id < id:
+                if self.id < self.finger_table[i].id < id:
+                    return grab_chord_node(self.finger_table[i].ip)
+            else:  # Wrap around case
+                if self.id < self.finger_table[i].id or self.finger_table[i].id < id:
+                    return grab_chord_node(self.finger_table[i].ip)
         return self
 
     def notify(self, target_ip, n0):
@@ -92,9 +98,6 @@ class ChordNode:
             # Send all data at once
             client_socket.sendall(data_to_send)
 
-            # Optionally, print the pickled data for debugging
-            print("Sent pickled data:", obj_data)
-
         except Exception as e:
             print(f"Error in notify: {e}")
         finally:
@@ -104,12 +107,15 @@ class ChordNode:
         # Periodic stabilization
 
         # Grab the successor and the predecessor of the successor
+        print("hello")
+        print(self.successor.id)
         if self.id == self.successor.id:
             successor = self
         else:
             successor = grab_chord_node(self.successor.ip)
         
         if successor.predecessor is None:
+            print("xxx")
             x_id = "None"
             x = None
         else:
@@ -128,20 +134,32 @@ class ChordNode:
 
 
         if self.id == successor.id:
+            print("x")
             self.successor = x
         elif successor.id < self.id:
             self.successor = successor
         elif x and (self.id < x.id < successor.id):
+            print("x")
             self.successor = x
         
         
-        print(f"Node {self.id} has set its successor as Node {successor.id}")
+        print(f"Node {self.id} has set its successor as Node {self.successor.id}")
         self.notify(self.successor.ip, self)
+    
+    def print_fingers(self):
+        """Print the contents of the finger table."""
+        print(f"Finger table for Node {self.id}:")
+        for i, finger in enumerate(self.finger_table):
+            if finger:
+                print(f"Finger {i}: ID - {finger.id}, IP - {finger.ip}")
+            else:
+                print(f"Finger {i}: None")
 
     def fix_fingers(self):
         # Periodically refresh finger table entries.
         print(f"fixing finger table of Node {self.id}")
         for i in range(M):
+            chordNode = self.find_successor((self.id + 2**i) % 2**M)
             self.finger_table[i] = self.find_successor((self.id + 2**i) % 2**M)
 
         

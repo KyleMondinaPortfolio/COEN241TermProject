@@ -80,6 +80,7 @@ class ChordServer:
 
             elif message_type == 'GRAB':
                 # Respond to GRAB message
+                print("GRAB")
                 response_obj = self.node
                 response_data = pickle.dumps(response_obj)
                 response_length = struct.pack('!I', len(response_data))
@@ -90,8 +91,6 @@ class ChordServer:
         finally:
             client_socket.close()
             print(f"Connection with {client_address} closed.")
-
-
 
     def start_server(self):
         self.server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -122,18 +121,23 @@ class ChordServer:
             elif command.lower() == 'stabilize':
                 self.node.stabilize()
             elif command.lower() == 'info':
+                print(f"----------- Node {self.node.ip}: {self.node.id}----------------")
                 if self.node.successor is None:
                     successor = 'none'
                 else:
-                    successor = f"{self.node.successor.id, self.node.successor.ip}"
+                    successor = f"Successor: {self.node.successor.id, self.node.successor.ip}"
                 
                 if self.node.predecessor is None:
                     predecessor = 'none'
                 else:
-                    predecessor = f"{self.node.predecessor.id, self.node.predecessor.ip}"
+                    predecessor = f"Successor: {self.node.predecessor.id, self.node.predecessor.ip}"
 
                 print(successor)
                 print(predecessor)
+            elif command.lower() == 'fingers':
+                self.node.print_fingers()
+            elif command.lower() == "fix":
+                self.node.fix_fingers()
             else:
                 print(f"Command received: {command}")
                 # Add your command handling logic here
