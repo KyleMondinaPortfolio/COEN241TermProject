@@ -56,7 +56,10 @@ class ChordNode:
 
     def find_successor(self, id):
         # Return a live version of the successor
-        successor = grab_chord_node(self.successor.ip)
+        if self.ping(self.successor.ip):
+            successor = grab_chord_node(self.successor.ip)
+        else:
+            successor = self
 
         # Grab the successor node
         if self.id < id < successor.id or self.id == successor.id:
@@ -69,13 +72,15 @@ class ChordNode:
 
     def closest_preceding_node(self, id):
         for i in range(M-1, -1, -1):
-            # Check if the finger_table[i].id is between self.id and id
-            if self.id < id:
-                if self.id < self.finger_table[i].id < id:
-                    return grab_chord_node(self.finger_table[i].ip)
-            else:  # Wrap around case
-                if self.id < self.finger_table[i].id or self.finger_table[i].id < id:
-                    return grab_chord_node(self.finger_table[i].ip)
+            finger = self.finger_table[i]
+            if finger and finger.id != self.id:
+                if self.ping(finger.ip):
+                    if self.id < id:
+                        if self.id < finger.id < id:
+                            return grab_chord_node(finger.ip)
+                    else:  # Wrap around case
+                        if self.id < finger.id or finger.id < id:
+                            return grab_chord_node(finger.ip)
         return self
 
     def notify(self, target_ip, n0):
@@ -103,13 +108,59 @@ class ChordNode:
         finally:
             client_socket.close()
 
+    def ping(self, target_ip):
+        """Ping another node to check if it is alive."""
+        client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        client_socket.settimeout(2)  # Set a timeout of 2 seconds
+
+        try:
+            client_socket.connect((target_ip, PORT))
+            message_type = "PING"
+            message_type_encoded = message_type.encode('utf-8')
+            message_type_length = len(message_type_encoded)
+
+            # Construct the data to send
+            data_to_send = struct.pack('!I', message_type_length) + message_type_encoded
+
+            # Send all data at once
+            client_socket.sendall(data_to_send)
+
+            # Wait for the response
+            response_type_length_data = client_socket.recv(4)
+            if len(response_type_length_data) < 4:
+                raise Exception("Incomplete response type length received")
+
+            response_type_length = struct.unpack('!I', response_type_length_data)[0]
+            response_type_encoded = client_socket.recv(response_type_length)
+            if len(response_type_encoded) < response_type_length:
+                raise Exception("Incomplete response type received")
+
+            response_type = response_type_encoded.decode('utf-8')
+            if response_type == "PONG":
+                return True
+        except Exception as e:
+            print(f"Error in ping: {e}")
+        finally:
+            client_socket.close()
+        return False
+
+    def reconcile(self):
+        if not self.ping(self.successor.ip):
+            print(f"Successor {self.successor.ip} is not responding. Finding a new successor.")
+            self.successor = self.find_successor(self.successor.id)
+
+        if self.predecessor and not self.ping(self.predecessor.ip):
+            print(f"Predecessor {self.predecessor.ip} is not responding. Removing predecessor.")
+            self.predecessor = None
+        return
+
     def stabilize(self):
         # Periodic stabilization
 
         # Grab the successor and the predecessor of the successor
-        print("hello")
-        print(self.successor.id)
-        if self.id == self.successor.id:
+        if not self.ping(self.successor.ip):
+            successor = self.find_successor(self.successor.id)
+        elif (self.id == self.successor.id) :
             successor = self
         else:
             successor = grab_chord_node(self.successor.ip)

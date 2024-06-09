@@ -86,6 +86,19 @@ class ChordServer:
                 response_length = struct.pack('!I', len(response_data))
                 client_socket.sendall(response_length + response_data)
 
+            elif message_type == 'PING':
+                # Respond to PING message with a PONG
+                print("Received PING, responding with PONG")
+                response_type = "PONG"
+                response_type_encoded = response_type.encode('utf-8')
+                response_type_length = len(response_type_encoded)
+
+                # Construct the data to send
+                data_to_send = struct.pack('!I', response_type_length) + response_type_encoded
+
+                # Send all data at once
+                client_socket.sendall(data_to_send)
+
         except Exception as e:
             print(f"Error handling client {client_address}: {e}")
         finally:
@@ -138,6 +151,8 @@ class ChordServer:
                 self.node.print_fingers()
             elif command.lower() == "fix":
                 self.node.fix_fingers()
+            elif command.lower() == "reconcile":
+                self.node.reconcile()
             else:
                 print(f"Command received: {command}")
                 # Add your command handling logic here
