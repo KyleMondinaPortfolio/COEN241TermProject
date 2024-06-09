@@ -250,7 +250,7 @@ class ChordServer:
                 print(f"Initiating download for: {file_name}")
 
                 # Ensure the 'downloaded' directory exists
-                downloaded_dir = '/tmp/czhang7/downloaded'
+                downloaded_dir = 'downloaded'
                 if not os.path.exists(downloaded_dir):
                     os.makedirs(downloaded_dir)
                     print(f"Created directory: {downloaded_dir}")
