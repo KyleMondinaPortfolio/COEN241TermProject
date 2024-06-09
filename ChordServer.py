@@ -36,7 +36,6 @@ class ChordServer:
             if not message_type:
                 return
 
-            
             print(message_type)
 
             if message_type == 'NOTIFY':
@@ -69,7 +68,8 @@ class ChordServer:
             elif message_type == 'GRAB':
                 response_obj = self.node
                 response_data = pickle.dumps(response_obj)
-                client_socket.sendall(response_data)
+                response_length = struct.pack('!I', len(response_data))
+                client_socket.sendall(response_length + response_data)
 
         except Exception as e:
             print(f"Error handling client {client_address}: {e}")
@@ -91,6 +91,34 @@ class ChordServer:
 
         accept_thread = threading.Thread(target=accept_connections)
         accept_thread.start()
+
+        self.handle_user_input()
+
         accept_thread.join()
 
+    def handle_user_input(self):
+        while True:
+            command = input("Enter command: ")
+            if command.lower() == 'exit':
+                print("Shutting down server...")
+                self.server_socket.close()
+                break
+            elif command.lower() == 'stabilize':
+                self.node.stabilize()
+            elif command.lower() == 'info':
+                if self.node.successor is None:
+                    successor = 'none'
+                else:
+                    successor = f"{self.node.successor.id, self.node.successor.ip}"
+                
+                if self.node.predecessor is None:
+                    predecessor = 'none'
+                else:
+                    predecessor = f"{self.node.predecessor.id, self.node.predecessor.ip}"
+
+                print(successor)
+                print(predecessor)
+            else:
+                print(f"Command received: {command}")
+                # Add your command handling logic here
 

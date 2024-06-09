@@ -89,21 +89,32 @@ class ChordNode:
         # Send header and message type
         client_socket.sendall(header + message_type_encoded)
 
-        # Send the serialized object
+        # Send the serialized object in chunks
         obj_data = pickle.dumps(n0)
-        client_socket.sendall(obj_data)
+        total_sent = 0
+        while total_sent < len(obj_data):
+            sent = client_socket.send(obj_data[total_sent:])
+            if sent == 0:
+                raise RuntimeError("Socket connection broken")
+            total_sent += sent
 
         client_socket.close()
+
 
     def stabilize(self):
         # Periodic stabilization
 
         # Grab the successor and the predecessor of the successor
-        successor = grab_chord_node(self.successor.ip)
+        if self.id == self.successor.id:
+            successor = self
+        else:
+            successor = grab_chord_node(self.successor.ip)
+        
         if successor.predecessor is None:
             x_id = "None"
             x = None
         else:
+            print(successor.predecessor.ip)
             x = grab_chord_node(successor.predecessor.ip)
             x_id = x.id
 
@@ -113,7 +124,7 @@ class ChordNode:
             # You are looping back
             if self.id < x.id or x.id < successor.id:
                 self.successor = x
-                notify(successor.ip, self)
+                self.notify(successor.ip, self)
                 return
 
 
@@ -126,7 +137,7 @@ class ChordNode:
         
         
         print(f"Node {self.id} has set its successor as Node {successor.id}")
-        self.notify(successor.ip, self)
+        self.notify(self.successor.ip, self)
 
     def fix_fingers(self):
         # Periodically refresh finger table entries.
