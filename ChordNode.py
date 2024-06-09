@@ -3,11 +3,12 @@ import pickle
 import hashlib
 import threading
 import struct
-
+from statistics import mean, stdev
 from NetworkUtil import grab_chord_node
 
 PORT = 5000
-M = 4
+M = 8
+ALPHA = 1
 
 def hash_key(key):
     """Generate a hash for a given key."""
@@ -27,6 +28,7 @@ class ChordNode:
         self.successor = self
         self.predecessor = None
         self.finger_table = [ChordNodeRef(self.id, self.ip)] * M  # Assume m=160 for SHA-1
+        self.blacklist = set() # To keep track of blacklisted nodes
         if bootstrap_node:
             self.join(bootstrap_node)
         else:
@@ -53,35 +55,80 @@ class ChordNode:
         for i in range(M):
             chordNode = self.find_successor((self.id + 2**i) % 2**M)
             self.finger_table[i] = ChordNodeRef(chordNode.id, chordNode.ip)
+    
+    def verify_hop(self, n0, n1, id):
+        """Verify if the hop between n0 and n1 is valid."""
+        nodes = [n0.id, n1.id, id]
+        distances = [abs(nodes[i] - nodes[i+1]) for i in range(len(nodes)-1)]
+        avg_distance = mean(distances)
+        std_dev = stdev(distances)
+        threshold = avg_distance + ALPHA * std_dev
+        return all(d <= threshold for d in distances)
 
     def find_successor(self, id):
-        # Return a live version of the successor
-        if self.ping(self.successor.ip):
-            successor = grab_chord_node(self.successor.ip)
-        else:
-            successor = self
+        current = self
+        path = []
 
-        # Grab the successor node
-        if self.id < id < successor.id or self.id == successor.id:
-            return successor
-        else:
-            n0 = self.closest_preceding_node(id)
-            if n0.id == self.id:
-                return successor
-            return n0.find_successor(id)
+        while True:
+            if current.id == id or current.id == self.successor.id:
+                print("case A") 
+                # Node is alone in the network, its successor is itself
+                return current.successor
+
+            if current.id < id <= current.successor.id or \
+               (current.id > current.successor.id and (id > current.id or id <= current.successor.id)):
+                print("case B") 
+                if not self.ping(current.successor.ip):
+                    path.append((current, self.closest_preceding_node(id)))
+                    current.successor = self.closest_preceding_node(id)
+                    break
+                path.append((current, current.successor))
+                current.successor = current.successor
+                break
+
+            next_node = current.closest_preceding_node(id)
+
+            if next_node.id == current.id:
+                # We've looped back to the same node, which means no further lookup is possible.
+                print("case C") 
+                path.append(current, current.successor)
+                break
+
+            if self.ping(next_node.ip):
+                path.append((current, next_node))
+                current = grab_chord_node(next_node.ip)
+            else:
+                # The next node is not responding, blacklist and continue the search
+                self.blacklist.add(next_node.ip)
+                print(f"Node {next_node.ip} blacklisted during routing from {current.id} to {id}")
+
+        for n0, n1 in path:
+            if not self.verify_hop(n0, n1, id):
+                self.blacklist.add(n1.ip)
+                print(f"Node {n1.ip} blacklisted during routing from {n0.id} to {id}")
+                print("Case d")
+                return self.find_successor(id)  # Retry the lookup
+
+        return current.successor
 
     def closest_preceding_node(self, id):
         for i in range(M-1, -1, -1):
             finger = self.finger_table[i]
-            if finger and finger.id != self.id:
+            if finger and finger.id != self.id and finger.ip not in self.blacklist:
                 if self.ping(finger.ip):
+                    node = grab_chord_node(finger.ip)
+                    # Check if the node's id is between self.id and id
                     if self.id < id:
-                        if self.id < finger.id < id:
-                            return grab_chord_node(finger.ip)
+                        if self.id < node.id < id:
+                            print(f"result of closest procceding node: {self.id} is {node.id}")
+                            return node
                     else:  # Wrap around case
-                        if self.id < finger.id or finger.id < id:
-                            return grab_chord_node(finger.ip)
+                        if self.id < node.id or node.id < id:
+                            print(f"result of closest procceding node: {self.id} is {node.id}")
+                            return node
+        print(f"failure, returning self {self.id}")
         return self
+
 
     def notify(self, target_ip, n0):
         print(f"Node {self.id} sending notification operation to {target_ip}")
@@ -148,6 +195,7 @@ class ChordNode:
         if not self.ping(self.successor.ip):
             print(f"Successor {self.successor.ip} is not responding. Finding a new successor.")
             self.successor = self.find_successor(self.successor.id)
+            print(f"Resulting sucessor is {self.successor.id}")
 
         if self.predecessor and not self.ping(self.predecessor.ip):
             print(f"Predecessor {self.predecessor.ip} is not responding. Removing predecessor.")

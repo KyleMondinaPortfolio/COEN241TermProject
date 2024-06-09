@@ -8,7 +8,7 @@ from NetworkUtil import grab_chord_node
 from ChordNode import ChordNode
 
 PORT = 5000
-M = 4
+M = 8
 
 class ChordServer:
     def __init__(self, ip, bootstrap_ip=None):
@@ -65,7 +65,7 @@ class ChordServer:
                         self.node.predecessor = n0
                     elif predecessor.id > self.node.id:
                         # Loop back
-                        if predecessor.id < n0.id:
+                        if not (self.node.id <= n0.id <= predecessor.id):
                             self.node.predecessor = n0
                             print(f"The notify function of {self.node.id} was called with argument {n0.id}, its predecessor is {self.node.predecessor.id}")
                             return
