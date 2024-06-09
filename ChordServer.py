@@ -87,6 +87,7 @@ class ChordServer:
                 client_socket.sendall(response_length + response_data)
 
             elif message_type == 'PING':
+                # Start sechord
                 # Respond to PING message with a PONG
                 print("Received PING, responding with PONG")
                 response_type = "PONG"
