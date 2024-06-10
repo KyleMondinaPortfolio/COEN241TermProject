@@ -14,6 +14,7 @@ if len(re.findall(regexp_ip,self_ip))>0 or len(re.findall(regexp_name,self_ip))>
     print("Valid IPs/hostnames.")
 else:
     print("Invalid IPs/hostnames.")
+    sys.exit(0)
 
 chordServer = ChordServer(self_ip)
 chordServer.start_server()
