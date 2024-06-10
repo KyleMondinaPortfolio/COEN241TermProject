@@ -1,6 +1,7 @@
 from ChordServer import ChordServer
 import sys
 import os
+import re
 
 directory_path = "/tmp/$USER/uploaded"
 if not os.path.exists(directory_path):
