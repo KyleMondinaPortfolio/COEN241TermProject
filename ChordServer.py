@@ -115,7 +115,7 @@ class ChordServer:
                 file_name = file_name_encoded.decode('utf-8')
 
                 # Attempt to locate the file
-                file_path = f'/tmp/czhang7/uploaded/{file_name}'
+                file_path = f'/tmp/$USER/uploaded/{file_name}'
                 if os.path.isfile(file_path):
                     # If file is found, send back the current node's IP
                     response_type = "FOUND"
@@ -258,7 +258,7 @@ class ChordServer:
                 # Attempt to start the download process
                 if self.node.successor:
                     # Check if this node has the file
-                    file_path = f'/tmp/czhang7/uploaded/{file_name}'
+                    file_path = f'/tmp/$USER/uploaded/{file_name}'
                     if os.path.isfile(file_path):
                         # If file is on the local node, copy it directly to the "downloaded/" folder
                         shutil.copy(file_path, f'downloaded/{file_name}')
@@ -271,7 +271,7 @@ class ChordServer:
                             if result:
                                 print(f"File {file_name} found at node: {result}")
                                 # Use SCP to download the file
-                                os.system(f"scp {result}:/tmp/czhang7/uploaded/{file_name} downloaded/{file_name}")
+                                os.system(f"scp {result}:/tmp/$USER/uploaded/{file_name} downloaded/{file_name}")
                                 print(f"Downloaded {file_name} from {result} to 'downloaded/'.")
                             else:
                                 print(f"File {file_name} not found in the network.")
@@ -289,7 +289,7 @@ class ChordServer:
 
                     # Copy the file to the local "uploaded" directory
                     file_name = os.path.basename(file_path)
-                    local_upload_path = f'/tmp/czhang7/uploaded/{file_name}'
+                    local_upload_path = f'/tmp/$USER/uploaded/{file_name}'
                     shutil.copy(file_path, local_upload_path)
                     self.node.add_uploaded_file(file_name)  # Track the uploaded file
                     print(f"File {file_name} uploaded locally to {local_upload_path}")
@@ -298,7 +298,7 @@ class ChordServer:
                     if self.node.successor:
                         successor_ip = self.node.successor.ip
                         # Send file via SCP
-                        os.system(f"scp {local_upload_path} {successor_ip}:/tmp/czhang7/uploaded/{file_name}")
+                        os.system(f"scp {local_upload_path} {successor_ip}:/tmp/$USER/uploaded/{file_name}")
                         # Notify the successor to update its backup list
                         self.notify_successor_of_backup(successor_ip, file_name)
                         print(f"File {file_name} also uploaded to successor at {successor_ip}")
@@ -387,10 +387,10 @@ class ChordServer:
         # Recover missing uploaded files from predecessor's list
         if self.node.predecessor and self.node.predecessor.ip != self.ip:  # Ensure the predecessor is not self
             uploaded_files_list = self.get_uploaded_files_from_node(self.node.predecessor.ip)
-            local_uploaded_files = [f for f in uploaded_files_list if not os.path.exists(f"/tmp/czhang7/uploaded/{f}")]
+            local_uploaded_files = [f for f in uploaded_files_list if not os.path.exists(f"/tmp/$USER/uploaded/{f}")]
             for file_name in local_uploaded_files:
                 # Request missing file from predecessor
-                scp_command = f"scp {self.node.predecessor.ip}:/tmp/czhang7/uploaded/{file_name} /tmp/czhang7/uploaded/{file_name}"
+                scp_command = f"scp {self.node.predecessor.ip}:/tmp/$USER/uploaded/{file_name} /tmp/$USER/uploaded/{file_name}"
                 result = os.system(scp_command)
                 if result == 0:  # Assuming successful SCP transfer
                     self.node.add_backup_file(file_name)
@@ -401,10 +401,10 @@ class ChordServer:
         # Recover missing backup files from successor's list
         if self.node.successor and self.node.successor.ip != self.ip:  # Ensure the successor is not self
             backup_files_list = self.get_backup_files_from_node(self.node.successor.ip)
-            missing_backup_files = [f for f in backup_files_list if not os.path.exists(f"/tmp/czhang7/uploaded/{f}")]
+            missing_backup_files = [f for f in backup_files_list if not os.path.exists(f"/tmp/$USER/uploaded/{f}")]
             for file_name in missing_backup_files:
                 # Use SCP directly to request missing backup file from successor
-                scp_command = f"scp {self.node.successor.ip}:/tmp/czhang7/uploaded/{file_name} /tmp/czhang7/uploaded/{file_name}"
+                scp_command = f"scp {self.node.successor.ip}:/tmp/$USER/uploaded/{file_name} /tmp/$USER/uploaded/{file_name}"
                 result = os.system(scp_command)
                 if result == 0:  # Assuming successful SCP transfer
                     self.node.add_uploaded_file(file_name)
