@@ -11,8 +11,8 @@ PORT = 5000
 M = 8
 ALPHA = 1
 
-UPLOADED_FILES_METADATA = "/tmp/czhang7/uploaded_files_metadata.txt"
-BACKUP_FILES_METADATA = "/tmp/czhang7/backup_files_metadata.txt"
+UPLOADED_FILES_METADATA = "/tmp/$USER/uploaded_files_metadata.txt"
+BACKUP_FILES_METADATA = "/tmp/$USER/backup_files_metadata.txt"
 
 def hash_key(key):
     """Generate a hash for a given key."""
