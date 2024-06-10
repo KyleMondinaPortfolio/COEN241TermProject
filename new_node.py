@@ -2,7 +2,7 @@ from NetworkUtil import grab_chord_node
 from ChordNode import ChordNode
 from ChordServer import ChordServer
 import sys
-
+import re
 import os
 
 directory_path = "/tmp/$USER/uploaded"
