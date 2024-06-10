@@ -3,7 +3,8 @@ import socket
 import pickle
 import struct
 
-PORT = 5000
+from globals import PORT, M, ALPHA
+
 
 def grab_chord_node(ip):
     client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
