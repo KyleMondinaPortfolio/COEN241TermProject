@@ -11,6 +11,8 @@ PORT = 5000
 M = 8
 ALPHA = 1
 
+# Start fixing integrating
+
 UPLOADED_FILES_METADATA = "/tmp/czhang7/uploaded_files_metadata.txt"
 BACKUP_FILES_METADATA = "/tmp/czhang7/backup_files_metadata.txt"
 
