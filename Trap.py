@@ -7,7 +7,8 @@ class TrapNode(ChordNode):
     def __init__(self, ip, bootstrap_node=None):
         super().__init__(ip, bootstrap_node)
         self.evil = True  # Set the node as malicious
-        self.id = 2**M + 50
+        self.id = 64
+        self.trap = self
         print(f"Just kidding, trap node id is {self.id}")
 
 class TrapServer(ChordServer):

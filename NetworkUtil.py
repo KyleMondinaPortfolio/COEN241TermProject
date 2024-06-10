@@ -35,7 +35,7 @@ def grab_chord_node(ip):
 
         chord_node = pickle.loads(response_data)
 
-        print(f"Received node from {ip}, {chord_node.ip}")
+        print(f"Received node from {chord_node.id}, {chord_node.ip}")
         return chord_node
 
     except Exception as e:

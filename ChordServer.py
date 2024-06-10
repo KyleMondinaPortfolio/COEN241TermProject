@@ -8,6 +8,8 @@ import shutil
 
 from NetworkUtil import grab_chord_node
 from ChordNode import ChordNode
+from globals import PORT, M, ALPHA
+
 
 PORT = 5000
 M = 8
@@ -82,11 +84,18 @@ class ChordServer:
 
             elif message_type == 'GRAB':
                 # Respond to GRAB message
-                print("GRAB")
-                response_obj = self.node
-                response_data = pickle.dumps(response_obj)
-                response_length = struct.pack('!I', len(response_data))
-                client_socket.sendall(response_length + response_data)
+                if self.node.evil:
+                    print("I AM EVIL!, GIVING THE WRONG NODE!!!")
+                    response_obj = self.node.trap
+                    response_data = pickle.dumps(response_obj)
+                    response_length = struct.pack('!I', len(response_data))
+                    client_socket.sendall(response_length + response_data)
+                else:
+                    print("GRAB")
+                    response_obj = self.node
+                    response_data = pickle.dumps(response_obj)
+                    response_length = struct.pack('!I', len(response_data))
+                    client_socket.sendall(response_length + response_data)
 
             elif message_type == 'PING':
                 # Start sechord
@@ -310,6 +319,15 @@ class ChordServer:
             elif command.lower() == 'recover':
                 self.recover_files()
                 print("Recover process initiated.")
+            elif command.startswith('find '):
+                target_id = int(command.split(' ', 1)[1].strip())
+                self.node.find_successor_id(target_id)
+            elif command.startswith('be-evil '):
+                trap_ip = command.split(' ', 1)[1].strip()
+                self.node.be_evil(trap_ip)
+            elif command.lower() == 'be-good':
+                self.node.be_good()
+
             else:
                 print(f"Command received: {command}")
                 # Add your command handling logic here

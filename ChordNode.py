@@ -6,10 +6,11 @@ import struct
 from statistics import mean, stdev
 from NetworkUtil import grab_chord_node
 import os
+import numpy as np
 
-PORT = 5000
-M = 8
-ALPHA = 1
+from globals import PORT, M, ALPHA
+
+# Start fixing integrating
 
 UPLOADED_FILES_METADATA = "/tmp/czhang7/uploaded_files_metadata.txt"
 BACKUP_FILES_METADATA = "/tmp/czhang7/backup_files_metadata.txt"
@@ -36,12 +37,33 @@ class ChordNode:
         self.uploaded_files = []
         self.backup_files = []
         self.load_metadata()
+        self.evil = False
 
         if bootstrap_node:
             self.join(bootstrap_node)
         else:
             # Start a new P2P network if no bootstrap node is supplied
             self.initialize_first_node()
+
+    def be_evil(self, trap_ip):
+        # Turn the node into an evil node
+        print(f"Node {self.id}, {self.ip} is now EVIL!")
+        self.evil = True
+        print("Grab Chord Node Called on be_evil start")
+        trap = grab_chord_node(trap_ip)
+        print("Grab Chord Node Called on be_evil end")
+        self.trap = trap
+
+    def be_good(self):
+        # Turn the node into a good node
+        print(f"Node {self.id}, {self.ip} will now behave :)")
+        self.evil = False
+        self.trap = None
+
+    def misroute(self, id):
+        # Misroute the request by returning a random incorrect node
+        incorrect_node = self.predecessor.ip  # Simple example, always misroute to the last finger
+        return grab_chord_node(incorrect_node.ip)
     
     def load_metadata(self):
         # Load uploaded files metadata
@@ -92,66 +114,142 @@ class ChordNode:
         for i in range(M):
             chordNode = self.find_successor((self.id + 2**i) % 2**M)
             self.finger_table[i] = ChordNodeRef(chordNode.id, chordNode.ip)
+
     
-    def verify_hop(self, n0, n1, id):
-        """Verify if the hop between n0 and n1 is valid."""
-        nodes = [n0.id, n1.id, id]
-        distances = [abs(nodes[i] - nodes[i+1]) for i in range(len(nodes)-1)]
-        avg_distance = mean(distances)
-        std_dev = stdev(distances)
-        threshold = avg_distance + ALPHA * std_dev
-        return all(d <= threshold for d in distances)
+    def verify_hop(self, node_id, target):
+        # Construct the finger table based on the given id
+        finger_table = [(node_id + 2**i) % 2**M for i in range(M)]
+        
+        # Calculate distances between consecutive IDs in the finger table
+        distances = [(finger_table[i] - finger_table[i - 1]) % (2 ** M) for i in range(M)]
+        
+        # Calculate E(id) and sigma
+        E_id = np.mean(distances)
+        sigma = np.std(distances)
+        print(f"mean {E_id}")
+        threshold = E_id + ALPHA * sigma
+        print(f"threshold: {threshold}")
+        
+        # Check if the distance |fi - n| is within the acceptable range
+        for id in finger_table:
+            distance = (target - id) % (2 ** M)
+            if distance <= threshold and not (distance == 0):
+                return True
+        return False
+
 
     def find_successor(self, id):
         current = self
         path = []
+    
+        if self.evil:
+            print(f"Node {self.id} is EVIL!, forwarding the trap!")
+            return self.trap
 
         while True:
             if current.id == id or current.id == self.successor.id:
+                print(f"current.id {current.id}")
+                print(f"id {id}")
+                print(f"succesor.id {self.successor.id}")
                 print("case A") 
+                if self.id < id < self.successor.id:
+                    print("case Aa")
+                    return self.successor
                 # Node is alone in the network, its successor is itself
-                return current.successor
+
+
+                if current.successor.id in self.blacklist:
+                    for n0, n1 in path:
+                        print(f"Path taken: {n0.id}:{n0.ip} -> {n1.id}:{n1.ip}")
+                    return self
+                else:
+                    for n0, n1 in path:
+                        print(f"Path taken: {n0.id}:{n0.ip} -> {n1.id}:{n1.ip}")
+                    return current.successor
 
             if current.id < id <= current.successor.id or \
-               (current.id > current.successor.id and (id > current.id or id <= current.successor.id)):
+               (current.id > current.successor.id and not(current.successor.id <= id <= current.id)):
                 print("case B") 
+                # The Key has reached its target node
                 if not self.ping(current.successor.ip):
+                    # Dead node, retry
                     path.append((current, self.closest_preceding_node(id)))
-                    current.successor = self.closest_preceding_node(id)
-                    break
-                path.append((current, current.successor))
-                current.successor = current.successor
+                    next_node = self.closest_preceding_node(id)
+                    print(f"Grab node called in last iteration step of find successor start where node is currently {current.id} 1start")
+                    current = grab_chord_node(next_node.ip)
+                    current.blacklist.update(self.blacklist)
+                    print(f"Grab node called in last iteration step of find successor start where node is currently {current.id} end")
+                else:
+                    path.append((current, current.successor))
+                    next_node = current.successor
+                    print(f"Grab node called in last iteration step of find successor start where node is currently {current.id} 2start")
+                    current = grab_chord_node(next_node.ip)
+                    current.blacklist.update(self.blacklist)
+                    print(f"Grab node called in last iteration step of find successor start where node is currently {current.id} end")
+                
+                
+                for n0, n1 in path:
+                    print(f"Path taken: {n0.id}:{n0.ip} -> {n1.id}:{n1.ip}")
                 break
 
             next_node = current.closest_preceding_node(id)
 
+            # Check if the next node is valid or not
+            if not self.verify_hop(current.id, next_node.id):
+                # Malicious Node detected! End iteration and backtrack
+                print(f"Malicious Node detected! End iteration and backtrack, pathing is {current.id}->{next_node.id}")
+                traitor_id = current.closest_preceding_node_id(id)
+                print(f"{traitor_id } IS ATTEMPTING AN ILLEGAL HOP! A TRAITOR!")
+                self.blacklist.add(traitor_id)
+                path.append((current, next_node))
+                print("Retrying Hop")
+                return self.find_successor(id) 
+            print(f"verify passed between {current.id} and {next_node.id}")
+
+
             if next_node.id == current.id:
                 # We've looped back to the same node, which means no further lookup is possible.
                 print("case C") 
-                path.append(current, current.successor)
+                path.append((current, next_node))
+                for n0, n1 in path:
+                    print(f"Path taken: {n0.id}:{n0.ip} -> {n1.id}:{n1.ip}")
                 break
 
             if self.ping(next_node.ip):
                 path.append((current, next_node))
+                if next_node.id in self.blacklist:
+                    next_node = current.closest_preceding_node(id)
+                    print(f"Next node has been banned! return closest next {next_node.id}")
+                    return self
+
+                print(f"Grab node called in iteration step of find successor start where node is currently {current.id} 3start")
                 current = grab_chord_node(next_node.ip)
+                current.blacklist.update(self.blacklist)
+                print(f"Grab node called in iteration step of find successor start where node is currently {current.id} end")
+
             else:
                 # The next node is not responding, blacklist and continue the search
                 self.blacklist.add(next_node.ip)
-                print(f"Node {next_node.ip} blacklisted during routing from {current.id} to {id}")
+                print(f"Node {next_node.ip} blacklisted cause it was dead during routing from {current.id} to {id}")
 
         for n0, n1 in path:
-            if not self.verify_hop(n0, n1, id):
+            print(f"Path taken: {n0.id}:{n0.ip} -> {n1.id}:{n1.ip}")
+            if not self.verify_hop(n0.id, n1.id):
                 self.blacklist.add(n1.ip)
                 print(f"Node {n1.ip} blacklisted during routing from {n0.id} to {id}")
                 print("Case d")
                 return self.find_successor(id)  # Retry the lookup
 
-        return current.successor
+        return current
 
     def closest_preceding_node(self, id):
+        if self.evil:
+            print(f"Evil Node {self.id} returning a trap from closest_preceding_node")
+            return self.trap
+
         for i in range(M-1, -1, -1):
             finger = self.finger_table[i]
-            if finger and finger.id != self.id and finger.ip not in self.blacklist:
+            if finger and finger.id != self.id and finger.id not in self.blacklist:
                 if self.ping(finger.ip):
                     node = grab_chord_node(finger.ip)
                     # Check if the node's id is between self.id and id
@@ -166,6 +264,18 @@ class ChordNode:
         print(f"failure, returning self {self.id}")
         return self
 
+    def closest_preceding_node_id(self, id):
+
+        for i in range(M-1, -1, -1):
+            finger = self.finger_table[i]
+            if finger and finger.id != self.id and finger.id not in self.blacklist:
+                return finger.id
+        print(f"failure, returning self {self.id}")
+        return self.id
+
+    def find_successor_id(self, id):
+        successor = self.find_successor(id)
+        print(f"id {id} corresponds to Node {successor.id}:{successor.ip}")
 
     def notify(self, target_ip, n0):
         print(f"Node {self.id} sending notification operation to {target_ip}")
