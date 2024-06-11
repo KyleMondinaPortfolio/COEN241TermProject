@@ -12,8 +12,8 @@ from globals import PORT, M, ALPHA
 
 # Start fixing integrating
 
-UPLOADED_FILES_METADATA = "/tmp/czhang7/uploaded_files_metadata.txt"
-BACKUP_FILES_METADATA = "/tmp/czhang7/backup_files_metadata.txt"
+UPLOADED_FILES_METADATA = "/tmp/$USER/uploaded_files_metadata.txt"
+BACKUP_FILES_METADATA = "/tmp/$USER/backup_files_metadata.txt"
 
 def hash_key(key):
     """Generate a hash for a given key."""
