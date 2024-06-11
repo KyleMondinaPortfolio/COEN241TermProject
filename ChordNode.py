@@ -8,12 +8,12 @@ from NetworkUtil import grab_chord_node
 import os
 import numpy as np
 
-from globals import PORT, M, ALPHA
+from globals import PORT, M, ALPHA, USER
 
 # Start fixing integrating
 
-UPLOADED_FILES_METADATA = "/tmp/$USER/uploaded_files_metadata.txt"
-BACKUP_FILES_METADATA = "/tmp/$USER/backup_files_metadata.txt"
+UPLOADED_FILES_METADATA = f"/tmp/{USER}/uploaded_files_metadata.txt"
+BACKUP_FILES_METADATA = f"/tmp/{USER}/backup_files_metadata.txt"
 
 def hash_key(key):
     """Generate a hash for a given key."""
