@@ -41,6 +41,11 @@ In a proper Chord implementation, the stabilize protocol runs automatically in t
     ```
 - Run stabilize on all nodes until info shows a circular dependency on all nodes.
 
+- **Fix Finger Tables**
+Once the network has stabilized into a ring, run:
+```bash
+    fix
+```
 
 ### Node Failure
 When a node is dropped, its successor and predecessor need to run:
@@ -51,3 +56,30 @@ reconcile
 Then, the stabilize protocol needs to be run on the whole network to re-establish a ring.
 
 ### File Operations
+- **Upload a File:**
+
+```bash
+upload {file_name}
+```
+
+- **Download a File:**
+```bash
+download {file_name}
+```
+
+### Security - Hop Verification
+In network routing, hop verification as specified in the Sechord algorithm checks if each hop in the routing path is valid. If a hop is invalid, the routing path skips the malicious node, and the node is added to a blacklist.
+
+- **Start a Malicious Node:**
+```bash
+    python3 trap.py {self.ip}
+```
+- **Turn a Node "Evil":**
+This makes the node misroute any routing request to the malicious node.
+```bash
+be-evil {malicious_ip}
+```
+- **Turn the Node Back to Good:**
+```bash
+be-good
+```
