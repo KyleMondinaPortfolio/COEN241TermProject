@@ -21,9 +21,6 @@ This project was completed as part of COEN 241 - Cloud Computing at Santa Clara 
 - [Architecture](#architecture)
 - [Installation](#installation)
 - [Usage](#usage)
-- [Testing and Simulation](#testing-and-simulation)
-- [Results](#results)
-- [Future Work](#future-work)
 
 ## Introduction
 
