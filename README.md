@@ -71,3 +71,8 @@ Clone the repository and install necessary dependencies:
 git clone https://github.com/your-repository/secure-openstack-p2p-storage.git
 cd secure-openstack-p2p-storage
 pip install -r requirements.txt
+
+## Usage
+To start the system
+1. **Initialize Nodes: ** Use the node's interface to upload files of varying sizes (5MB to 5GB).
+2. **Upload Files: ** Use the node's interface to upload files of varying sizes (5MB to 5GB).
