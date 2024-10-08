@@ -75,5 +75,9 @@ pip install -r requirements.txt
 
 ## Usage
 To start the system
-1. **Initialize Nodes: ** Use the node's interface to upload files of varying sizes (5MB to 5GB).
-2. **Upload Files: ** Use the node's interface to upload files of varying sizes (5MB to 5GB).
+1. **Initialize Nodes:** Use the node's interface to upload files of varying sizes (5MB to 5GB).
+```
+python start_node.py
+```
+3. **Upload Files:** Use the node's interface to upload files of varying sizes (5MB to 5GB).
+4. **Simulate Malicious Nodes:** Toggle a node to malicious mode and observe the system's ability to detect and reroute around malicious nodes.
