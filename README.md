@@ -71,6 +71,7 @@ Clone the repository and install necessary dependencies:
 git clone https://github.com/your-repository/secure-openstack-p2p-storage.git
 cd secure-openstack-p2p-storage
 pip install -r requirements.txt
+```
 
 ## Usage
 To start the system
